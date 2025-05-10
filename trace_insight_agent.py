@@ -13,10 +13,35 @@ st.title("Agentic Log Analyzer with Live Pipeline Flow + Chatbot")
 load_dotenv()
 
 log_file = st.text_input("Path to Splunk JSONL log file", value="splunk_errorlog.jsonl")
-model_id = st.text_input("Model ID", value="/data/granite-3.1-8b-instruct")
-api_key = os.getenv("GRANITE_API_KEY_GRANITE_3_1_8b", "not_set")
+
+model_options = {
+    "Granite 3.1 8B": {
+        "id_env": "MODEL_GRANITE_3_1_8B_ID",
+        "api_env": "MODEL_GRANITE_3_1_8B_API",
+        "api_key": "MODEL_GRANITE_3_1_8B_API_KEY"
+    },
+    "Granite 3.2 8B": {
+        "id_env": "MODEL_GRANITE_3_2_8B_ID",
+        "api_env": "MODEL_GRANITE_3_2_8B_API",
+        "api_key": "MODEL_GRANITE_3_2_8B_API_KEY"
+    },
+    "Mistral 8B": {
+            "id_env": "MODEL_MISTRAL_7B_ID",
+            "api_env": "MODEL_MISTRAL_7B_API",
+            "api_key": "MODEL_MISTRAL_7B_API_KEY"
+    },
+    "OpenChat 3.5": {
+        "id_env": "MODEL_OPENCHAT_3_5_ID",
+        "api_env": "MODEL_OPENCHAT_3_5_API",
+        "api_key": ""
+    },
+}
+
+selected_model = st.selectbox("Select Supported Model", list(model_options.keys()))
+model_id = os.getenv(model_options[selected_model]["id_env"], "unknown_model_id")
+model_api = os.getenv(model_options[selected_model]["api_env"], "https://missing-api")
+api_key = os.getenv(model_options[selected_model]["api_key"], "no_key")
 st.write("API key loaded from environment.")
-model_api = st.text_input("Granite API Endpoint", value="https://granite-3-1-8b-instruct--apicast-production.apps.int.stc.ai.prod.us-east-1.aws.paas.redhat.com:443")
 
 MAX_TOKENS = 100000
 
@@ -121,10 +146,11 @@ Logs:
 {formatted_logs}
 """
             summaries.append(call_model(prompt, model_id, api_key, model_api))
-
+            st.session_state["chunk_summaries"] = summaries
         status.update(label=":chart_with_upwards_trend: Synthesizing final summary...")
         final_prompt = "Combine the following summaries and highlight patterns, frequent errors, and affected services:\n" + "\n".join(summaries)
         final_summary = call_model(final_prompt, model_id, api_key, model_api)
+        st.session_state["log_summary"] = final_summary
 
         status.update(label=":white_check_mark: Pipeline complete", state="complete")
         st.session_state["log_summary"] = final_summary
@@ -147,17 +173,23 @@ graph TD
 st.markdown("---")
 st.header("Chat with Summarized Logs")
 
-if "log_summary" in st.session_state:
+if "log_summary" in st.session_state and "chunk_summaries" in st.session_state:
+    combined_summary = (
+        "### Final Summary ###\n"
+        + st.session_state["log_summary"]
+        + "\n\n### Chunk Summaries ###\n"
+        + "\n\n".join([f"Chunk {i+1}:\n{s}" for i, s in enumerate(st.session_state["chunk_summaries"])])
+    )
+
     with st.form("chat_form"):
         user_query = st.text_input("Ask a question about the logs:")
         submitted = st.form_submit_button("Ask")
 
     if submitted and user_query.strip():
         chat_prompt = f"""
-You are a knowledgeable assistant. Use the following summary to answer questions:
+You are a knowledgeable assistant. Use the following summary to answer questions.
 
-Summary:
-{st.session_state['log_summary']}
+{combined_summary}
 
 User Query:
 {user_query}

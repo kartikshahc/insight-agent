@@ -1,4 +1,3 @@
-
 import streamlit as st
 import json
 import requests
@@ -18,22 +17,22 @@ model_options = {
     "Granite 3.1 8B": {
         "id_env": "MODEL_GRANITE_3_1_8B_ID",
         "api_env": "MODEL_GRANITE_3_1_8B_API",
-        "api_key": "MODEL_GRANITE_3_1_8B_API_KEY"
+        "api_key": "MODEL_GRANITE_3_1_8B_API_KEY",
     },
     "Granite 3.2 8B": {
         "id_env": "MODEL_GRANITE_3_2_8B_ID",
         "api_env": "MODEL_GRANITE_3_2_8B_API",
-        "api_key": "MODEL_GRANITE_3_2_8B_API_KEY"
+        "api_key": "MODEL_GRANITE_3_2_8B_API_KEY",
     },
     "Mistral 8B": {
-            "id_env": "MODEL_MISTRAL_7B_ID",
-            "api_env": "MODEL_MISTRAL_7B_API",
-            "api_key": "MODEL_MISTRAL_7B_API_KEY"
+        "id_env": "MODEL_MISTRAL_7B_ID",
+        "api_env": "MODEL_MISTRAL_7B_API",
+        "api_key": "MODEL_MISTRAL_7B_API_KEY",
     },
     "OpenChat 3.5": {
         "id_env": "MODEL_OPENCHAT_3_5_ID",
         "api_env": "MODEL_OPENCHAT_3_5_API",
-        "api_key": ""
+        "api_key": "",
     },
 }
 
@@ -44,6 +43,7 @@ api_key = os.getenv(model_options[selected_model]["api_key"], "no_key")
 st.write("API key loaded from environment.")
 
 MAX_TOKENS = 100000
+
 
 def call_model(prompt, model_id, api_key, model_api):
     url = f"{model_api}/v1/completions"
@@ -69,32 +69,37 @@ def call_model(prompt, model_id, api_key, model_api):
         st.error(f"Request error: {e}")
         return "Error in API call."
 
+
 def estimate_tokens(logs, encoding):
     total = 0
     for log in logs:
         total += len(encoding.encode(json.dumps(log)))
     return total
 
+
 def load_and_parse_logs(path):
     logs = []
-    with open(path, 'r') as file:
+    with open(path, "r") as file:
         for line in file:
             try:
                 outer = json.loads(line)
                 result = outer.get("result", {})
                 raw = json.loads(result.get("_raw", "{}"))
-                logs.append({
-                    "_time": result.get("_time"),
-                    "host": result.get("host"),
-                    "message": raw.get("message"),
-                    "spanId": raw.get("properties", {}).get("spanId"),
-                    "traceId": raw.get("properties", {}).get("traceId"),
-                    "source": result.get("source"),
-                    "sourcetype": result.get("sourcetype")
-                })
+                logs.append(
+                    {
+                        "_time": result.get("_time"),
+                        "host": result.get("host"),
+                        "message": raw.get("message"),
+                        "spanId": raw.get("properties", {}).get("spanId"),
+                        "traceId": raw.get("properties", {}).get("traceId"),
+                        "source": result.get("source"),
+                        "sourcetype": result.get("sourcetype"),
+                    }
+                )
             except:
                 continue
     return logs
+
 
 def chunk_logs(logs, encoding, max_tokens=MAX_TOKENS):
     chunks = []
@@ -112,6 +117,7 @@ def chunk_logs(logs, encoding, max_tokens=MAX_TOKENS):
     if current_chunk:
         chunks.append(current_chunk)
     return chunks
+
 
 if st.button("Run Pipeline"):
     with st.status("Initializing...", expanded=True) as status:
@@ -135,10 +141,12 @@ if st.button("Run Pipeline"):
         summaries = []
         for i, chunk in enumerate(chunks):
             status.update(label=f":brain: Summarizing chunk {i+1}/{len(chunks)}...")
-            formatted_logs = "\n".join([
-                f"_time: {log.get('_time')}, host: {log.get('host')}, message: {log.get('message')}"
-                for log in chunk
-            ])
+            formatted_logs = "\n".join(
+                [
+                    f"_time: {log.get('_time')}, host: {log.get('host')}, message: {log.get('message')}"
+                    for log in chunk
+                ]
+            )
             prompt = f"""
 You are an expert SRE assistant analyzing production error logs.
 Group log entries into distinct error types. Summarize each group briefly.
@@ -148,9 +156,11 @@ Logs:
             summaries.append(call_model(prompt, model_id, api_key, model_api))
             st.session_state["chunk_summaries"] = summaries
         status.update(label=":chart_with_upwards_trend: Synthesizing final summary...")
-        final_prompt = "Combine the following summaries and highlight patterns, frequent errors, and affected services:\n" + "\n".join(summaries)
+        final_prompt = (
+            "Combine the following summaries and highlight patterns, frequent errors, and affected services:\n"
+            + "\n".join(summaries)
+        )
         final_summary = call_model(final_prompt, model_id, api_key, model_api)
-        st.session_state["log_summary"] = final_summary
 
         status.update(label=":white_check_mark: Pipeline complete", state="complete")
         st.session_state["log_summary"] = final_summary
@@ -159,7 +169,8 @@ Logs:
     st.text_area("Summary Output", value=final_summary, height=300)
 
     st.markdown("### Pipeline Flow")
-    st.markdown(f"""
+    st.markdown(
+        f"""
 ```mermaid
 graph TD
     A[Load Logs ({len(logs)})] --> B[Token Estimate (~{total_tokens})]
@@ -167,7 +178,9 @@ graph TD
     C --> D[Granite Summary Per Chunk]
     D --> E[Final Summary]
 ```
-""", unsafe_allow_html=True)
+""",
+        unsafe_allow_html=True,
+    )
 
 # Chat interface
 st.markdown("---")
@@ -178,7 +191,12 @@ if "log_summary" in st.session_state and "chunk_summaries" in st.session_state:
         "### Final Summary ###\n"
         + st.session_state["log_summary"]
         + "\n\n### Chunk Summaries ###\n"
-        + "\n\n".join([f"Chunk {i+1}:\n{s}" for i, s in enumerate(st.session_state["chunk_summaries"])])
+        + "\n\n".join(
+            [
+                f"Chunk {i+1}:\n{s}"
+                for i, s in enumerate(st.session_state["chunk_summaries"])
+            ]
+        )
     )
 
     with st.form("chat_form"):

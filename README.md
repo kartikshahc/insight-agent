@@ -39,13 +39,19 @@ Traditional log analysis often requires:
 ### Prerequisites
 Python 3.13
 
-
 ### Installation
 
 ```bash
 git clone
 cd insight-agent
 pip install -r requirements.txt
+```
+
+Create `.env` file add
+```
+MODEL_GRANITE_3_1_8B_ID=</data/xyz>
+MODEL_GRANITE_3_1_8B_API=<https://xyz.com>
+MODEL_GRANITE_3_1_8B_API_KEY=<Token>
 ```
 
 ## Running the App

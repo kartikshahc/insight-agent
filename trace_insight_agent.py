@@ -148,11 +148,11 @@ if st.button("Run Pipeline"):
                 ]
             )
             prompt = f"""
-You are an expert SRE assistant analyzing production error logs.
-Group log entries into distinct error types. Summarize each group briefly.
-Logs:
-{formatted_logs}
-"""
+            You are an expert SRE assistant analyzing production error logs.
+            Group log entries into distinct error types. Summarize each group briefly.
+            Logs:
+            {formatted_logs}
+            """
             summaries.append(call_model(prompt, model_id, api_key, model_api))
             st.session_state["chunk_summaries"] = summaries
         status.update(label=":chart_with_upwards_trend: Synthesizing final summary...")
@@ -171,14 +171,14 @@ Logs:
     st.markdown("### Pipeline Flow")
     st.markdown(
         f"""
-```mermaid
-graph TD
-    A[Load Logs ({len(logs)})] --> B[Token Estimate (~{total_tokens})]
-    B --> C[Chunks ({len(chunks)})]
-    C --> D[Granite Summary Per Chunk]
-    D --> E[Final Summary]
-```
-""",
+            ```mermaid
+            graph TD
+                A[Load Logs ({len(logs)})] --> B[Token Estimate (~{total_tokens})]
+                B --> C[Chunks ({len(chunks)})]
+                C --> D[Granite Summary Per Chunk]
+                D --> E[Final Summary]
+            ```
+        """,
         unsafe_allow_html=True,
     )
 
